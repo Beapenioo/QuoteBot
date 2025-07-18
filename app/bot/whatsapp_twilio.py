@@ -60,55 +60,58 @@ def handle_message(message: str, phone_number: str) -> str:
     """
     Gelen mesajı işler ve uygun yanıtı döner
     """
-    # /start komutu
+    MENU_MSG = "1) Güncel demir fiyatı öğrenme\n2) Belirtilen kg için toplam fiyat hesaplama"
+    GREETING = f"Merhaba,\nYapmak istediğiniz işlemi seçiniz:\n{MENU_MSG}"
+    REPEAT_MENU = f"\n\nBaşka yardımcı olmamı istediğiniz bir konu var mı?\n\n{MENU_MSG}"
+
+    # /start veya ilk selamlaşma
     if message.lower() in ['/start', 'start', 'hey', 'hi', 'hello', 'merhaba']:
-        return (
-            "Yapmak istediğiniz işlemi seçiniz:\n"
-            "1) Güncel demir fiyatı öğrenme\n"
-            "2) Belirtilen kg için toplam fiyat hesaplama\n\n"
-            "Yönetici komutları:\n"
-            "/setprice [fiyat] - Fiyat güncelleme"
-        )
+        return GREETING
     
-    # /setprice komutu kontrolü
+    # /setprice komutu kontrolü (menüde gösterilmeyecek)
     if message.startswith('/setprice'):
         if not is_whatsapp_admin(phone_number):
-            return "Bu komutu sadece yöneticiler kullanabilir."
-        
+            return "Bu komutu sadece yöneticiler kullanabilir." + REPEAT_MENU
         try:
             parts = message.split()
             if len(parts) != 2:
-                return "Lütfen geçerli bir fiyat girin. Örn: /setprice 48.75"
-            
+                return "Lütfen geçerli bir fiyat girin. Örn: /setprice 48.75" + REPEAT_MENU
             new_price = parts[1]
             set_price(new_price)
-            return f"Yeni fiyat {new_price} olarak kaydedildi."
+            return f"Yeni fiyat {new_price} olarak kaydedildi." + REPEAT_MENU
         except:
-            return "Lütfen geçerli bir fiyat girin. Örn: /setprice 48.75"
-    
-    # Normal mesaj işleme
+            return "Lütfen geçerli bir fiyat girin. Örn: /setprice 48.75" + REPEAT_MENU
+
+    # Menü seçenekleri
     if message == "1":
         price_info = get_current_price()
         if price_info:
-            return f"Güncel demir fiyatı: {price_info['price_per_kg']} {price_info['currency']}"
+            return f"Güncel demir fiyatı: {price_info['price_per_kg']} {price_info['currency']}" + REPEAT_MENU
         else:
-            return "Fiyatlar henüz açıklanmadı."
-    
+            return "Fiyatlar henüz açıklanmadı." + REPEAT_MENU
     elif message == "2":
-        return "Kaç kg demir için fiyat hesaplayalım?\n\nLütfen kg miktarını yazın (örn: 5, 10.5, 25)"
-    
+        return "Kaç kg demir için fiyat hesaplayalım?\n\nLütfen kg miktarını yazın (örn: 5, 10.5, 25)" + REPEAT_MENU
     elif message.replace(".", "", 1).isdigit():
         price_info = get_current_price()
         if price_info:
             kg = float(message)
             total_price = price_info["price_per_kg"] * kg
-            return f"{kg} kg demir için toplam fiyat: {total_price:.2f} {price_info['currency']}"
+            return f"{kg} kg demir için toplam fiyat: {total_price:.2f} {price_info['currency']}" + REPEAT_MENU
         else:
-            return "Fiyatlar henüz açıklanmadı."
-    
-    else:
-        ai_response = ask_ai_openrouter(message)
-        return ai_response
+            return "Fiyatlar henüz açıklanmadı." + REPEAT_MENU
+
+    # Fiyatla ilgili bir şey sorulursa AI yerine direkt fiyatı döndür
+    price_keywords = ["fiyat", "kaç para", "ücret", "ne kadar", "kg fiyat", "demir fiyat", "demirin fiyatı", "demir kaç para", "demir ücreti"]
+    if any(kw in message.lower() for kw in price_keywords):
+        price_info = get_current_price()
+        if price_info:
+            return f"Güncel demir fiyatı: {price_info['price_per_kg']} {price_info['currency']}" + REPEAT_MENU
+        else:
+            return "Fiyatlar henüz açıklanmadı." + REPEAT_MENU
+
+    # Diğer tüm mesajlar için AI cevabı
+    ai_response = ask_ai_openrouter(message)
+    return ai_response + REPEAT_MENU
 
 @app.route('/start', methods=['GET'])
 def start():
