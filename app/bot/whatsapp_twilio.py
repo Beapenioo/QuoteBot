@@ -5,6 +5,26 @@ from app.bot.price_manager import set_price
 from app.config.admin_config import is_whatsapp_admin
 import os
 from dotenv import load_dotenv
+import requests
+
+
+def ask_ai_openrouter(message):
+    api_url = "https://openrouter.ai/api/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {os.getenv('OPENROUTER_API_KEY')}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "model": "openai/gpt-3.5-turbo",  # veya başka bir model ismi
+        "messages": [
+            {"role": "user", "content": message}
+        ]
+    }
+    response = requests.post(api_url, headers=headers, json=data)
+    if response.status_code == 200:
+        return response.json()["choices"][0]["message"]["content"]
+    else:
+        return "Üzgünüm, şu anda yardımcı olamıyorum."
 
 # Environment dosyasını yükle
 load_dotenv()
@@ -87,14 +107,8 @@ def handle_message(message: str, phone_number: str) -> str:
             return "Fiyatlar henüz açıklanmadı."
     
     else:
-        return (
-            "Geçersiz seçim.\n\n"
-            "Kullanılabilir komutlar:\n"
-            "1 - Güncel fiyat öğrenme\n"
-            "2 - Kg hesaplama\n"
-            "/start - Ana menü\n"
-            "/setprice [fiyat] - Fiyat güncelleme (yönetici)"
-        )
+        ai_response = ask_ai_openrouter(message)
+        return ai_response
 
 @app.route('/start', methods=['GET'])
 def start():
